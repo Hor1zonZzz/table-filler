@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:google.github.io)",
+      "Bash(uv sync:*)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}
