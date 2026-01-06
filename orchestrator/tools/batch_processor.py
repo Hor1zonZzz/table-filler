@@ -238,29 +238,60 @@ def batch_process_pdfs(
     tool_context: Any,
 ) -> dict[str, Any]:
     """
-    Process multiple PDFs in parallel with VL model extraction.
+    Process multiple PDF documents in parallel to extract form field values.
 
-    The VL model views PDF pages directly (no OCR), extracts form fields,
-    and verifies the results. Failed PDFs are automatically retried up to 3 times.
+    Use this tool after configuring form fields with set_form_config. The tool
+    processes PDFs in parallel (up to 10 concurrent), with automatic retry
+    (up to 3 attempts) for failed documents.
+
+    For each PDF, the VL model:
+    1. Views each page as an image (no OCR conversion)
+    2. Extracts configured field values by reading the document
+    3. Verifies extracted values against the original document
+    4. Reports confidence scores and any issues found
+
+    Results are categorized as:
+    - Successful: High confidence, all required fields found
+    - Needs Review: Some uncertainty or missing optional fields
+    - Failed: Could not process or critical errors
 
     Args:
-        pdf_paths: List of PDF file paths to process
-        tool_context: ADK tool context for state access
+        pdf_paths: List of absolute file paths to PDF documents.
+            Example: ["/data/contracts/contract001.pdf", "/data/contracts/contract002.pdf"]
 
     Returns:
-        Processing results including:
-        - total_count: Total PDFs processed
-        - successful_count: Successfully processed PDFs
-        - needs_review_count: PDFs needing human review
-        - failed_count: Failed PDFs
-        - successful/needs_review/failed: Detailed results lists
+        A dictionary containing:
+        - status: "success" or "error"
+        - message: Human-readable summary of results
+        - total_count: Number of PDFs processed (int)
+        - successful_count: Number of successful extractions (int)
+        - needs_review_count: Number needing human review (int)
+        - failed_count: Number of failed extractions (int)
+        - successful: List of successful result objects
+        - needs_review: List of results needing review
+        - failed: List of failed results with error messages
+        - error: Error message (if status is "error")
 
     Example:
-        batch_process_pdfs([
-            "/path/to/contract1.pdf",
-            "/path/to/contract2.pdf",
+        >>> batch_process_pdfs([
+        ...     "/data/contracts/contract001.pdf",
+        ...     "/data/contracts/contract002.pdf",
+        ...     "/data/contracts/contract003.pdf"
+        ... ])
+        {
+            "status": "success",
+            "message": "Processed 3 PDFs: 2 successful, 1 needs review, 0 failed",
+            "total_count": 3,
+            "successful_count": 2,
+            "needs_review_count": 1,
+            "failed_count": 0,
             ...
-        ])
+        }
+
+        Typical workflow:
+        1. set_form_config([...]) -> configure fields
+        2. batch_process_pdfs([...]) -> process documents
+        3. export_to_excel("/output/results.xlsx") -> export results
     """
     # Get form configuration from session state
     form_config = tool_context.state.get("form_config")

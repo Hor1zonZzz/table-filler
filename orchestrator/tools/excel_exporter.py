@@ -16,19 +16,53 @@ def export_to_excel(
     include_needs_review: bool = True,
 ) -> dict[str, Any]:
     """
-    Export batch processing results to an Excel file.
+    Export batch processing results to a formatted Excel file.
+
+    Use this tool after running batch_process_pdfs to save extraction results
+    to an Excel file. The output includes multiple sheets for different result
+    categories and a summary sheet with statistics.
+
+    The Excel file contains:
+    - "Successful" sheet: All successfully extracted records with field values
+    - "Needs Review" sheet: Records requiring human verification (optional)
+    - "Failed" sheet: Records that failed processing with error details (optional)
+    - "Summary" sheet: Processing statistics and success rate
 
     Args:
-        output_path: Path for the output Excel file (optional, auto-generated if not provided)
-        tool_context: ADK tool context for state access
-        include_failed: Whether to include failed records in a separate sheet
-        include_needs_review: Whether to include records needing review
+        output_path: Absolute path for the output Excel file (.xlsx).
+            If None, auto-generates a timestamped filename in the current directory.
+            Example: "/output/contract_results.xlsx"
+        include_failed: Whether to create a "Failed" sheet for error records.
+            Default is False. Set to True to see detailed error messages.
+        include_needs_review: Whether to create a "Needs Review" sheet.
+            Default is True. These records have low confidence or issues.
 
     Returns:
-        Export result with file path and statistics
+        A dictionary containing:
+        - status: "success" or "error"
+        - file_path: Absolute path to the created Excel file
+        - message: Confirmation message
+        - statistics: Count of records in each category
+        - sheets: List of sheet names created
+        - error: Error message (if status is "error")
 
     Example:
-        export_to_excel("/path/to/output.xlsx")
+        >>> export_to_excel("/output/results.xlsx")
+        {
+            "status": "success",
+            "file_path": "/output/results.xlsx",
+            "message": "Excel file exported to: /output/results.xlsx",
+            "statistics": {"successful": 45, "needs_review": 3, "failed": 2},
+            "sheets": ["Successful", "Needs Review", "Summary"]
+        }
+
+        >>> export_to_excel(None, include_failed=True)
+        # Auto-generates: table_filler_export_20240115_143052.xlsx
+
+        Typical workflow:
+        1. set_form_config([...]) -> configure fields
+        2. batch_process_pdfs([...]) -> process documents
+        3. export_to_excel("/results.xlsx") -> save to Excel
     """
     # Get batch results from state
     batch_results = tool_context.state.get("temp:batch_results")
