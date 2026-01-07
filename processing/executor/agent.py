@@ -1,5 +1,6 @@
 """Executor agent - uses VL model to view PDF pages and extract form fields."""
 
+import os
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 
@@ -11,8 +12,12 @@ from processing.shared_tools import (
     clear_notes,
 )
 
-# Use a VL-capable model
-model = LiteLlm(model="openai/gpt-4o")  # Or your VL model
+# Use a VL-capable model with DashScope API
+model = LiteLlm(
+    model="openai/qwen3-vl-flash",
+    api_base=os.getenv("DASHSCOPE_BASE_URL"),
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+)
 
 executor_agent = LlmAgent(
     model=model,

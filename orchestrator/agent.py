@@ -72,10 +72,6 @@ Use `export_to_excel` to export results to an Excel file.
 - Be concise in responses
 - After processing, report: successful count, needs review count, failed count
 - If there are failed or needs-review records, remind users to check the Excel details
-
-## Current Status
-- Form configuration: {form_config}
-- Processing status: {processing_status}
 """,
     tools=[
         set_form_config,

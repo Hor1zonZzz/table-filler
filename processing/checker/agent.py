@@ -1,12 +1,17 @@
 """Checker agent - uses VL model to verify extracted data against original document."""
 
+import os
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 
 from processing.shared_tools import view_page, get_page_count, read_notes
 
-# Use a VL-capable model for verification
-model = LiteLlm(model="openai/gpt-4o")  # Or your VL model
+# Use a VL-capable model with DashScope API
+model = LiteLlm(
+    model="openai/qwen3-vl-flash",
+    api_base=os.getenv("DASHSCOPE_BASE_URL"),
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+)
 
 checker_agent = LlmAgent(
     model=model,

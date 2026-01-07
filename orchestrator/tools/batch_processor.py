@@ -7,6 +7,7 @@ from typing import Any
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from orchestrator.tools.pdf_to_images import pdf_to_images
@@ -87,7 +88,10 @@ async def _process_single_pdf_internal(
         async for event in runner.run_async(
             user_id=session.user_id,
             session_id=session.id,
-            new_message=f"Extract form fields from the PDF at {pdf_path}. Use view_page() to see the document pages. Form fields to extract are in form_config.",
+            new_message=types.Content(
+                role="user",
+                parts=[types.Part(text=f"Extract form fields from the PDF at {pdf_path}. Use view_page() to see the document pages. Form fields to extract are in form_config.")]
+            ),
         ):
             # We collect events but mainly care about final state
             pass
@@ -233,7 +237,7 @@ async def batch_process_pdfs_async(
     }
 
 
-def batch_process_pdfs(
+async def batch_process_pdfs(
     pdf_paths: list[str],
     tool_context: Any,
 ) -> dict[str, Any]:
@@ -321,26 +325,17 @@ def batch_process_pdfs(
         }
 
     # Run async batch processing
-    try:
-        result = asyncio.run(
-            batch_process_pdfs_async(valid_paths, form_config)
-        )
+    result = await batch_process_pdfs_async(valid_paths, form_config)
 
-        # Store results in state for export
-        tool_context.state["temp:batch_results"] = result
+    # Store results in state for export
+    tool_context.state["temp:batch_results"] = result
 
-        # Add summary message
-        result["message"] = (
-            f"Processed {result['total_count']} PDFs: "
-            f"{result['successful_count']} successful, "
-            f"{result['needs_review_count']} needs review, "
-            f"{result['failed_count']} failed"
-        )
+    # Add summary message
+    result["message"] = (
+        f"Processed {result['total_count']} PDFs: "
+        f"{result['successful_count']} successful, "
+        f"{result['needs_review_count']} needs review, "
+        f"{result['failed_count']} failed"
+    )
 
-        return result
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": f"Batch processing failed: {str(e)}",
-        }
+    return result
