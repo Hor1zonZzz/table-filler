@@ -23,7 +23,10 @@
       "WebFetch(domain:www.firecrawl.dev)",
       "Bash(del \"D:\\\\project\\\\LTC\\\\vl_agent\\\\tools\\\\image_viewer.py\")",
       "Skill(skill-creator)",
-      "Bash(gh issue create:*)"
+      "Bash(gh issue create:*)",
+      "Skill(google-adk-dev)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

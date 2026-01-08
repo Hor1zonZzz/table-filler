@@ -1,21 +1,23 @@
-"""Shared models and utilities for the table filler system."""
+"""共享模块 - 常量和状态键。"""
 
-from shared.models import (
-    BatchResult,
-    ExtractionResult,
-    FieldValue,
-    FormField,
-    ProcessingStatus,
-    VerificationIssue,
-    VerificationResult,
+from shared.state_keys import StateKeys
+from shared.constants import (
+    MAX_CONCURRENT_DOCUMENTS,
+    MAX_RETRY_ATTEMPTS,
+    DEFAULT_PDF_DPI,
+    PDF_EXTENSIONS,
+    IMAGE_EXTENSIONS,
+    HIGH_CONFIDENCE_THRESHOLD,
+    LOW_CONFIDENCE_THRESHOLD,
 )
 
 __all__ = [
-    "FormField",
-    "FieldValue",
-    "ExtractionResult",
-    "VerificationIssue",
-    "VerificationResult",
-    "BatchResult",
-    "ProcessingStatus",
+    "StateKeys",
+    "MAX_CONCURRENT_DOCUMENTS",
+    "MAX_RETRY_ATTEMPTS",
+    "DEFAULT_PDF_DPI",
+    "PDF_EXTENSIONS",
+    "IMAGE_EXTENSIONS",
+    "HIGH_CONFIDENCE_THRESHOLD",
+    "LOW_CONFIDENCE_THRESHOLD",
 ]
