@@ -3,7 +3,31 @@
     "allow": [
       "WebFetch(domain:google.github.io)",
       "Bash(uv sync:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)",
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.litellm.ai)",
+      "WebFetch(domain:developers.googleblog.com)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(uv run adk --help:*)",
+      "Bash(uv run adk run --help:*)",
+      "Bash(uv run:*)",
+      "Bash(timeout 300 bash -c 'echo \"\"Extract contract_id, party_a, party_b, contract_amount from D:/project/LTC/test_file/test.pdf\"\" | uv run adk run orchestrator 2>&1')",
+      "WebFetch(domain:codelabs.developers.google.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:www.firecrawl.dev)",
+      "Bash(del \"D:\\\\project\\\\LTC\\\\vl_agent\\\\tools\\\\image_viewer.py\")",
+      "Skill(skill-creator)",
+      "Bash(gh issue create:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "adk-docs-mcp"
+  ]
 }

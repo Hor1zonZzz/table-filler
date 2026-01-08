@@ -19,3 +19,6 @@ wheels/
 
 # ADK cache
 .adk/
+test_file/
+nul
+test.py
