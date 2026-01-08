@@ -8,7 +8,7 @@ import hashlib
 from typing import List
 
 # Tools that return images via artifact system
-IMAGE_TOOLS = ["edit_product_asset", "picture_loader"]
+IMAGE_TOOLS = ["edit_product_asset", "picture_loader", "load_all_pdf_pages"]
 
 
 async def before_model_modifier(
@@ -37,11 +37,10 @@ async def before_model_modifier(
             # Handle function response - collect artifacts, don't inject here
             elif part.function_response:
                 if part.function_response.name in IMAGE_TOOLS:
-                    artifact = await _extract_artifact_from_response(
+                    extracted = await _extract_artifacts_from_response(
                         part, callback_context
                     )
-                    if artifact:
-                        artifacts_to_inject.append(artifact)
+                    artifacts_to_inject.extend(extracted)
                 # Keep function_response as-is
                 modified_parts.append(part)
 
@@ -54,11 +53,17 @@ async def before_model_modifier(
     # Append collected artifacts as separate user Content
     # This avoids LiteLlm dropping images in function_response Content
     if artifacts_to_inject:
+        # Create descriptive text for the images
+        if len(artifacts_to_inject) == 1:
+            intro_text = "[Tool loaded image] Please analyze the following:"
+        else:
+            intro_text = f"[Tool loaded {len(artifacts_to_inject)} images] Please analyze each in order:"
+
         llm_request.contents.append(
             Content(
                 role="user",
                 parts=[
-                    Part(text="[Tool loaded images] Please analyze the following:"),
+                    Part(text=intro_text),
                     *artifacts_to_inject,
                 ]
             )
@@ -109,18 +114,32 @@ def _generate_artifact_id(part: Part) -> str:
     return f"usr_upl_img_{content_hash}.{extension}"
 
 
-async def _extract_artifact_from_response(
+async def _extract_artifacts_from_response(
     part: Part, callback_context: CallbackContext
-) -> Part | None:
-    """Extract artifact from function response.
+) -> list[Part]:
+    """Extract artifact(s) from function response.
+
+    Supports both single artifact (tool_response_artifact_id) and
+    multiple artifacts (tool_response_artifact_ids) for batch loading.
 
     Returns:
-        The artifact Part if found, None otherwise.
+        List of artifact Parts (empty if none found).
     """
+    artifacts = []
+
+    # Single artifact case (e.g., picture_loader)
     artifact_id = part.function_response.response.get("tool_response_artifact_id")
+    if artifact_id:
+        artifact = await callback_context.load_artifact(filename=artifact_id)
+        if artifact:
+            artifacts.append(artifact)
+        return artifacts
 
-    if not artifact_id:
-        return None
+    # Multiple artifacts case (e.g., load_all_pdf_pages)
+    artifact_ids = part.function_response.response.get("tool_response_artifact_ids", [])
+    for aid in artifact_ids:
+        artifact = await callback_context.load_artifact(filename=aid)
+        if artifact:
+            artifacts.append(artifact)
 
-    artifact = await callback_context.load_artifact(filename=artifact_id)
-    return artifact
+    return artifacts
