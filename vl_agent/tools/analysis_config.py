@@ -1,66 +1,39 @@
-"""Analysis configuration tool for PDF processing.
+"""Table schema configuration tool for VL agent."""
 
-This tool allows users to configure what kind of analysis
-the VL model should perform on PDF pages.
-"""
+import json
 
 from google.adk.tools import ToolContext
 
-# Valid analysis tasks
-VALID_TASKS = ["describe", "extract_tables", "find_signatures", "custom"]
 
-# Valid output formats
-VALID_FORMATS = ["markdown", "json", "text"]
-
-
-async def set_analysis_config(
+def set_config(
     tool_context: ToolContext,
-    task: str = "describe",
-    custom_prompt: str | None = None,
-    output_format: str = "markdown",
-) -> dict:
-    """Configure what to analyze in PDF pages.
+    columns: list[dict],
+) -> str:
+    """Configure table schema for extraction.
 
     Args:
-        task: Analysis task type. One of:
-            - "describe": General description of page content and layout
-            - "extract_tables": Extract all table data as structured format
-            - "find_signatures": Identify signatures, stamps, handwritten marks
-            - "custom": Follow custom_prompt instructions
-        custom_prompt: Custom analysis instructions (required if task="custom")
-        output_format: Output format - "markdown", "json", or "text"
+        tool_context: ADK ToolContext for state management.
+        columns: List of column definitions. Each column is a dict with:
+            - name (str): Column name / field name
+            - type (str): Data type - "string", "number", "date", "boolean"
+            - description (str): Description to help identify this field
 
     Returns:
-        dict with status and current configuration
+        "success" or error message string.
     """
-    if task not in VALID_TASKS:
-        return {
-            "status": "error",
-            "message": f"Invalid task '{task}'. Use one of: {VALID_TASKS}",
-        }
+    # Debug: print state
+    state = tool_context.state
+    print(f"[DEBUG] ToolContext state keys (before): {list(state._state.keys()) if hasattr(state, '_state') else 'N/A'}")
 
-    if output_format not in VALID_FORMATS:
-        return {
-            "status": "error",
-            "message": f"Invalid output_format '{output_format}'. Use one of: {VALID_FORMATS}",
-        }
+    if not columns:
+        return "fail: columns cannot be empty"
 
-    if task == "custom" and not custom_prompt:
-        return {
-            "status": "error",
-            "message": "custom_prompt is required when task='custom'",
-        }
+    for col in columns:
+        if not isinstance(col, dict):
+            return "fail: each column must be a dict"
+        if "name" not in col:
+            return "fail: each column must have 'name'"
 
-    config = {
-        "task": task,
-        "custom_prompt": custom_prompt,
-        "output_format": output_format,
-    }
-
-    tool_context.state["pdf_analysis_config"] = config
-
-    return {
-        "status": "success",
-        "config": config,
-        "message": f"Analysis configured: {task} with {output_format} output",
-    }
+    tool_context.state["table_schema"] = json.dumps(columns, ensure_ascii=False)
+    print(f"[DEBUG] table_schema value: {tool_context.state.get('table_schema')}")
+    return "success"

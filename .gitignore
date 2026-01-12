@@ -22,3 +22,4 @@ wheels/
 test_file/
 nul
 test.py
+.ace-tool/

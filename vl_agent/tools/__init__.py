@@ -2,10 +2,10 @@
 
 from .picture_loader import picture_loader
 from .pdf_loader_batch import load_all_pdf_pages
-from .analysis_config import set_analysis_config
+from .analysis_config import set_config
 
 __all__ = [
     "picture_loader",
     "load_all_pdf_pages",
-    "set_analysis_config",
+    "set_config",
 ]

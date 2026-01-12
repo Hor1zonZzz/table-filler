@@ -8,7 +8,7 @@ import hashlib
 from typing import List
 
 # Tools that return images via artifact system
-IMAGE_TOOLS = ["edit_product_asset", "picture_loader", "load_all_pdf_pages"]
+IMAGE_TOOLS = ["picture_loader", "load_all_pdf_pages"]
 
 
 async def before_model_modifier(
@@ -19,6 +19,14 @@ async def before_model_modifier(
     For LiteLlm/OpenAI-compatible endpoints, images must be in a separate
     user Content, not in the same Content as function_response.
     """
+    # Inject table_schema into instruction if present in state
+    table_schema = callback_context.state.get("table_schema")
+    if table_schema:
+        schema_prompt = f"\n\n## Table Schema to Extract\n```json\n{table_schema}\n```\n Ask user if accept this schema. If not, ask user to provide a new schema and exec the tool."
+        if llm_request.config and llm_request.config.system_instruction:
+            llm_request.config.system_instruction += schema_prompt
+        print(f"[DEBUG] Injected table_schema into instruction")
+
     artifacts_to_inject = []
 
     for content in llm_request.contents:

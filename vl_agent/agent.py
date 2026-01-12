@@ -1,7 +1,7 @@
-"""VL Agent - Strategy 3: Batch PDF Loading.
+"""VL Agent - Table Extractor.
 
-This agent loads ALL pages of a PDF at once and analyzes each page in order.
-Suitable for smaller PDFs (< 10 pages) where loading everything fits in context.
+This agent reads PDF documents and extracts data into a configured table schema.
+Like a human reading a PDF and filling out a form.
 """
 
 import os
@@ -9,7 +9,7 @@ import os
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 
-from .tools import picture_loader, load_all_pdf_pages, set_analysis_config
+from .tools import picture_loader, load_all_pdf_pages, set_config
 from .callbacks import before_model_modifier
 
 
@@ -22,49 +22,51 @@ model = LiteLlm(
 
 root_agent = LlmAgent(
     model=model,
-    name="pdf_reader_batch",
-    description="A vision-language agent that analyzes PDF documents page by page",
+    name="table_extractor",
+    description="A vision-language agent that extracts data from PDF into structured tables",
     before_model_callback=before_model_modifier,
-    instruction="""You are a PDF document analyzer with vision capabilities.
+    instruction="""You are a table extraction agent with vision capabilities.
+Your job is to read PDF/image documents and extract data into a structured table.
 
 ## Available Tools
 
-1. **set_analysis_config**: Configure what to analyze
-   - task: "describe" (default), "extract_tables", "find_signatures", or "custom"
-   - custom_prompt: Your custom instructions (required if task="custom")
-   - output_format: "markdown" (default), "json", or "text"
+1. **set_config**: Configure table schema (columns to extract)
+   - columns: List of column definitions, each with:
+     - name: Column name
+     - type: "string", "number", "date", "boolean"
+     - description: What this field represents
 
 2. **load_all_pdf_pages**: Load entire PDF as images
    - pdf_path: Path to the PDF file
-   - dpi: Resolution (default 150)
 
 3. **picture_loader**: Load a single image file
 
-## Workflow for PDF Analysis
+## Workflow (IMPORTANT - Follow This Order)
 
-1. If user specifies analysis preferences, call set_analysis_config() first
-2. Call load_all_pdf_pages(pdf_path) to load the entire PDF
-3. You will see ALL pages as images
-4. Analyze each page IN ORDER based on the configured task
-5. Output analysis for EACH page in this format:
+When user describes a table structure, you MUST:
 
-### Page 1 of N
-[Your analysis of page 1]
+1. **FIRST** call set_config() to save the table schema
+   - Convert user's description into columns format
+   - Example: User says "提取姓名和金额" → call set_config(columns=[{"name": "姓名", "type": "string"}, {"name": "金额", "type": "number"}])
 
-### Page 2 of N
-[Your analysis of page 2]
+2. **THEN** load the document
+   - For PDF: call load_all_pdf_pages(pdf_path)
+   - For image: call picture_loader(image_path)
 
-... continue for all pages ...
+3. **FINALLY** extract and output data as markdown table
 
-## Summary
-[Overall summary of the document]
+## Output Format
 
-## Important Notes
-- Always analyze pages in sequential order (1, 2, 3, ...)
-- Reference specific page numbers when noting important information
-- For extract_tables task, output structured table data
-- For find_signatures task, describe location and appearance of signatures/stamps
-- For custom task, follow the custom_prompt instructions exactly
+| Column1 | Column2 | Column3 |
+|---------|---------|---------|
+| value1  | value2  | value3  |
+
+If a field cannot be found, use "-".
+
+## Important
+- ALWAYS call set_config BEFORE loading documents
+- Match fields by meaning, not just exact text
+- For dates, use YYYY-MM-DD format
 """,
-    tools=[picture_loader, load_all_pdf_pages, set_analysis_config],
+    tools=[picture_loader, load_all_pdf_pages, set_config],
 )
