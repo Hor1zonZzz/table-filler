@@ -3,7 +3,8 @@
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
-from google.adk.tools import FunctionTool
+from google.adk.tools import FunctionTool, ToolContext
+from google.adk.tools.base_tool import BaseTool
 from google.genai import types
 from google.genai.types import Part, Content
 import hashlib
@@ -42,6 +43,28 @@ SCHEMA_RESET_TOOL = [
 DATA_LIST_TOOL = [
     FunctionTool(data_list),
 ]
+
+# Tools that require schema confirmation before execution
+REQUIRE_SCHEMA_TOOLS = {"load_all_pdf_pages", "picture_loader"}
+
+
+async def before_tool_validator(
+    tool: BaseTool,
+    args: dict,
+    tool_context: ToolContext,
+) -> dict | None:
+    """Validate tool calls before execution.
+
+    Ensures schema is confirmed before loading documents.
+    """
+    if tool.name in REQUIRE_SCHEMA_TOOLS:
+        schema_confirmed = tool_context.state.get("schema_confirmed")
+        if schema_confirmed != "true":
+            return {
+                "error": "Schema not confirmed. Please define and confirm schema first using schema_confirm tool."
+            }
+
+    return None  # Continue with tool execution
 
 
 async def before_model_modifier(

@@ -13,7 +13,7 @@ from .tools import (
     picture_loader,
     load_all_pdf_pages,
 )
-from .callbacks import before_model_modifier
+from .callbacks import before_model_modifier, before_tool_validator
 
 
 # Use qwen3-vl-flash via DashScope API (VL-capable model)
@@ -28,6 +28,7 @@ root_agent = LlmAgent(
     name="table_extractor",
     description="A vision-language agent that extracts data from PDF into structured tables",
     before_model_callback=before_model_modifier,
+    before_tool_callback=before_tool_validator,
     instruction="""You are a table extraction agent with vision capabilities.
 Your job is to read PDF/image documents and extract data into a structured table.
 
