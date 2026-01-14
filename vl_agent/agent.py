@@ -43,6 +43,7 @@ Your job is to read PDF/image documents and extract data into a structured table
    - Output as JSON array, use null for missing fields, YYYY-MM-DD for dates
 
 ## Notes
+- Remind user must set schema before extract data
 - Use the tools available to you in each phase
 - If you need to start over, use schema_reset
 """,

@@ -9,6 +9,8 @@ from google.genai.types import Part, Content
 import hashlib
 from typing import List
 
+import json
+
 from .tools.schema_tools import (
     schema_add_field,
     schema_remove_field,
@@ -17,6 +19,8 @@ from .tools.schema_tools import (
     schema_confirm,
     schema_reset,
 )
+from .tools.data_tools import data_list
+from .tools.data_tool_factory import create_data_append_tool
 
 # Tools that return images via artifact system
 IMAGE_TOOLS = ["picture_loader", "load_all_pdf_pages"]
@@ -34,6 +38,11 @@ SCHEMA_RESET_TOOL = [
     FunctionTool(schema_reset),
 ]
 
+# Static data tool (data_list doesn't need dynamic parameters)
+DATA_LIST_TOOL = [
+    FunctionTool(data_list),
+]
+
 
 async def before_model_modifier(
     callback_context: CallbackContext, llm_request: LlmRequest
@@ -49,8 +58,16 @@ async def before_model_modifier(
     # Dynamic tool injection based on schema_confirmed state
     schema_confirmed = callback_context.state.get("schema_confirmed")
     if schema_confirmed == "true":
-        # Schema confirmed: only provide reset tool
+        # Schema confirmed: provide reset tool and data tools
         llm_request.append_tools(SCHEMA_RESET_TOOL)
+        llm_request.append_tools(DATA_LIST_TOOL)
+
+        # Dynamically create data_append with schema-based parameters
+        schema_fields_raw = callback_context.state.get("schema_fields", "[]")
+        schema_fields = json.loads(schema_fields_raw) if schema_fields_raw else []
+        if schema_fields:
+            data_append_tool = create_data_append_tool(schema_fields)
+            llm_request.append_tools([data_append_tool])
     else:
         # Schema not confirmed: provide editing tools
         llm_request.append_tools(SCHEMA_EDIT_TOOLS)
