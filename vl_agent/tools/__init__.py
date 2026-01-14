@@ -2,10 +2,22 @@
 
 from .picture_loader import picture_loader
 from .pdf_loader_batch import load_all_pdf_pages
-from .analysis_config import set_config
+from .schema_tools import (
+    schema_add_field,
+    schema_remove_field,
+    schema_update_field,
+    schema_list,
+    schema_confirm,
+    schema_reset,
+)
 
 __all__ = [
     "picture_loader",
     "load_all_pdf_pages",
-    "set_config",
+    "schema_add_field",
+    "schema_remove_field",
+    "schema_update_field",
+    "schema_list",
+    "schema_confirm",
+    "schema_reset",
 ]

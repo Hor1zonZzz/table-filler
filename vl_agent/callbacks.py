@@ -1,7 +1,8 @@
 # vl_agent/callbacks.py
 
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.models import LlmResponse, LlmRequest
+from google.adk.models.llm_request import LlmRequest
+from google.adk.models.llm_response import LlmResponse
 from google.genai import types
 from google.genai.types import Part, Content
 import hashlib
@@ -19,13 +20,8 @@ async def before_model_modifier(
     For LiteLlm/OpenAI-compatible endpoints, images must be in a separate
     user Content, not in the same Content as function_response.
     """
-    # Inject table_schema into instruction if present in state
-    table_schema = callback_context.state.get("table_schema")
-    if table_schema:
-        schema_prompt = f"\n\n## Table Schema to Extract\n```json\n{table_schema}\n```\n Ask user if accept this schema. If not, ask user to provide a new schema and exec the tool."
-        if llm_request.config and llm_request.config.system_instruction:
-            llm_request.config.system_instruction += schema_prompt
-        print(f"[DEBUG] Injected table_schema into instruction")
+    # Debug: print state before sending to LLM
+    print(f"[DEBUG] State before LLM call: {callback_context.state._value}")
 
     artifacts_to_inject = []
 
@@ -108,15 +104,20 @@ def _generate_artifact_id(part: Part) -> str:
     Returns:
         Hash-based artifact ID with proper file extension.
     """
-    filename = part.inline_data.display_name or "uploaded_image"
-    image_data = part.inline_data.data
+    inline_data = part.inline_data
+    if not inline_data:
+        raise ValueError("Expected Part.inline_data to be set")
+
+    filename = inline_data.display_name or "uploaded_image"
+    image_data = inline_data.data
+    mime_type = inline_data.mime_type
+    if image_data is None or mime_type is None:
+        raise ValueError("inline_data.data and inline_data.mime_type are required")
 
     # Combine filename and image data for hash
     hash_input = filename.encode("utf-8") + image_data
     content_hash = hashlib.sha256(hash_input).hexdigest()[:16]
 
-    # Extract file extension from mime type
-    mime_type = part.inline_data.mime_type
     extension = mime_type.split("/")[-1]
 
     return f"usr_upl_img_{content_hash}.{extension}"
@@ -135,8 +136,13 @@ async def _extract_artifacts_from_response(
     """
     artifacts = []
 
+    function_response = part.function_response
+    response = function_response.response if function_response else None
+    if not response:
+        return artifacts
+
     # Single artifact case (e.g., picture_loader)
-    artifact_id = part.function_response.response.get("tool_response_artifact_id")
+    artifact_id = response.get("tool_response_artifact_id")
     if artifact_id:
         artifact = await callback_context.load_artifact(filename=artifact_id)
         if artifact:
@@ -144,7 +150,7 @@ async def _extract_artifacts_from_response(
         return artifacts
 
     # Multiple artifacts case (e.g., load_all_pdf_pages)
-    artifact_ids = part.function_response.response.get("tool_response_artifact_ids", [])
+    artifact_ids = response.get("tool_response_artifact_ids", [])
     for aid in artifact_ids:
         artifact = await callback_context.load_artifact(filename=aid)
         if artifact:
