@@ -12,12 +12,6 @@ from google.adk.models.lite_llm import LiteLlm
 from .tools import (
     picture_loader,
     load_all_pdf_pages,
-    schema_add_field,
-    schema_remove_field,
-    schema_update_field,
-    schema_list,
-    schema_confirm,
-    schema_reset,
 )
 from .callbacks import before_model_modifier
 
@@ -37,38 +31,23 @@ root_agent = LlmAgent(
     instruction="""You are a table extraction agent with vision capabilities.
 Your job is to read PDF/image documents and extract data into a structured table.
 
-## Schema Management Tools
+## Workflow
 
-- **schema_add_field(name, desc, type, required, default)**: Add a field
-- **schema_remove_field(name)**: Remove a field
-- **schema_update_field(name, updates)**: Update field attributes
-- **schema_list()**: Show current schema
-- **schema_confirm()**: Lock schema for processing, Set it up once and it will work.
-- **schema_reset()**: Clear and start over
+1. **Schema Definition Phase**: Define table schema based on user's description
+   - Add fields, show schema_list for user review
+   - Wait for user's explicit approval before confirming schema
 
-Field types: "string", "number", "date", "boolean"
+2. **Data Extraction Phase**: After schema is confirmed
+   - Load document with load_all_pdf_pages or picture_loader
+   - Extract data according to confirmed schema
+   - Output as JSON array, use null for missing fields, YYYY-MM-DD for dates
 
-## Document Loading Tools
-
-- **load_all_pdf_pages(pdf_path)**: Load entire PDF as images
-- **picture_loader(image_path)**: Load a single image file
-
-## Guidelines
-
-- Add fields based on user's description, then show schema_list for user to review
-- Wait for user's explicit approval before calling schema_confirm
-- Load document and extract data only after schema is confirmed
-- Output as JSON array, use null for missing fields
-- Use YYYY-MM-DD for dates
+## Notes
+- Use the tools available to you in each phase
+- If you need to start over, use schema_reset
 """,
     tools=[
         picture_loader,
         load_all_pdf_pages,
-        schema_add_field,
-        schema_remove_field,
-        schema_update_field,
-        schema_list,
-        schema_confirm,
-        schema_reset,
     ],
 )

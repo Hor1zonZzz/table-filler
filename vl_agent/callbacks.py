@@ -3,13 +3,36 @@
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
+from google.adk.tools import FunctionTool
 from google.genai import types
 from google.genai.types import Part, Content
 import hashlib
 from typing import List
 
+from .tools.schema_tools import (
+    schema_add_field,
+    schema_remove_field,
+    schema_update_field,
+    schema_list,
+    schema_confirm,
+    schema_reset,
+)
+
 # Tools that return images via artifact system
 IMAGE_TOOLS = ["picture_loader", "load_all_pdf_pages"]
+
+# Pre-create FunctionTool instances at module level to avoid repeated creation overhead
+SCHEMA_EDIT_TOOLS = [
+    FunctionTool(schema_add_field),
+    FunctionTool(schema_remove_field),
+    FunctionTool(schema_update_field),
+    FunctionTool(schema_list),
+    FunctionTool(schema_confirm),
+]
+
+SCHEMA_RESET_TOOL = [
+    FunctionTool(schema_reset),
+]
 
 
 async def before_model_modifier(
@@ -22,6 +45,15 @@ async def before_model_modifier(
     """
     # Debug: print state before sending to LLM
     print(f"[DEBUG] State before LLM call: {callback_context.state._value}")
+
+    # Dynamic tool injection based on schema_confirmed state
+    schema_confirmed = callback_context.state.get("schema_confirmed")
+    if schema_confirmed == "true":
+        # Schema confirmed: only provide reset tool
+        llm_request.append_tools(SCHEMA_RESET_TOOL)
+    else:
+        # Schema not confirmed: provide editing tools
+        llm_request.append_tools(SCHEMA_EDIT_TOOLS)
 
     artifacts_to_inject = []
 
