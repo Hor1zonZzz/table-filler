@@ -9,28 +9,25 @@ import os
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 
-from .tools import (
-    picture_loader,
-    load_all_pdf_pages,
-)
+from .tools import batch_extract_pdfs
 from .callbacks import before_model_modifier, before_tool_validator
 
 
-# Use qwen3-vl-flash via DashScope API (VL-capable model)
+# Use DeepSeek Chat as the main orchestrator model
 model = LiteLlm(
-    model="openai/qwen3-vl-flash",
-    api_base=os.getenv("DASHSCOPE_BASE_URL"),
-    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    model="deepseek/deepseek-chat",
+    api_base=os.getenv("DEEPSEEK_BASE_URL"),
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
 )
 
 root_agent = LlmAgent(
     model=model,
     name="table_extractor",
-    description="A vision-language agent that extracts data from PDF into structured tables",
+    description="An orchestrator agent that manages schema and coordinates PDF data extraction",
     before_model_callback=before_model_modifier,
     before_tool_callback=before_tool_validator,
-    instruction="""You are a table extraction agent with vision capabilities.
-Your job is to read PDF/image documents and extract data into a structured table.
+    instruction="""You are a table extraction orchestrator.
+Your job is to manage schema definition and coordinate PDF data extraction.
 
 ## Workflow
 
@@ -39,17 +36,13 @@ Your job is to read PDF/image documents and extract data into a structured table
    - Wait for user's explicit approval before confirming schema
 
 2. **Data Extraction Phase**: After schema is confirmed
-   - Load document with load_all_pdf_pages or picture_loader
-   - Extract data according to confirmed schema
-   - Output as JSON array, use null for missing fields, YYYY-MM-DD for dates
+   - Use batch_extract_pdfs to extract data from PDF files
+   - Use data_list to show extracted results
 
 ## Notes
 - Remind user must set schema before extract data
 - Use the tools available to you in each phase
 - If you need to start over, use schema_reset
 """,
-    tools=[
-        picture_loader,
-        load_all_pdf_pages,
-    ],
+    tools=[batch_extract_pdfs],
 )

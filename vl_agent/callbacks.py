@@ -45,7 +45,7 @@ DATA_LIST_TOOL = [
 ]
 
 # Tools that require schema confirmation before execution
-REQUIRE_SCHEMA_TOOLS = {"load_all_pdf_pages", "picture_loader"}
+REQUIRE_SCHEMA_TOOLS = {"batch_extract_pdfs"}
 
 
 async def before_tool_validator(
