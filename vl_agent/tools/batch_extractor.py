@@ -22,6 +22,8 @@ from .pdf_renderer import (
 MAX_BASE64_BYTES = 10 * 1024 * 1024
 # DPI levels to try (from high to low)
 DPI_LEVELS = [150, 120, 100, 72, 50]
+# VL model for extraction
+VL_MODEL = os.getenv("VL_MODEL", "qwen3-vl-flash")
 
 
 def _render_page_with_size_limit(
@@ -210,7 +212,7 @@ async def _extract_single_pdf(
     # Call VL model
     try:
         response = await client.chat.completions.create(
-            model="qwen3-vl-flash",
+            model=VL_MODEL,
             messages=messages,
         )
 
