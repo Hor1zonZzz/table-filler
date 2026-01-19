@@ -10,6 +10,7 @@ import json
 import os
 
 from openai import AsyncOpenAI
+from openpyxl import Workbook
 from google.adk.tools.tool_context import ToolContext
 
 from .pdf_renderer import (
@@ -139,11 +140,18 @@ async def batch_extract_pdfs(
     else:
         status = "error"
 
+    # Auto export to Excel on success
+    export_path = None
+    if status == "success" and existing_rows:
+        output_file = "./extracted_data.xlsx"
+        export_path = _export_to_excel(existing_rows, schema_fields, output_file)
+
     return {
         "status": status,
         "total_processed": len(pdf_paths),
         "total_extracted": len(all_rows),
         "errors": errors if errors else None,
+        "export_path": export_path,
     }
 
 
@@ -328,3 +336,32 @@ def _parse_extraction_result(content: str, schema_fields: list[dict]) -> list[di
 
     except json.JSONDecodeError:
         return []
+
+
+def _export_to_excel(rows: list[dict], schema_fields: list[dict], output_path: str) -> str | None:
+    """Export extracted rows to Excel file.
+
+    Returns:
+        Output path on success, None on failure.
+    """
+    if not rows:
+        return None
+
+    try:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Extracted Data"
+
+        # Write headers
+        headers = [field["name"] for field in schema_fields]
+        ws.append(headers)
+
+        # Write data rows
+        for row_data in rows:
+            ws.append([row_data.get(h, "") for h in headers])
+
+        wb.save(output_path)
+        return output_path
+    except Exception as e:
+        print(f"[Excel Export Error] {e}")
+        return None
