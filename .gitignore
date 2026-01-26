@@ -25,5 +25,5 @@ test.py
 .ace-tool/
 .vscode/
 
-
+.claude/
 data/

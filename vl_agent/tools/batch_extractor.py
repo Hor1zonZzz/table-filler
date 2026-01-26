@@ -11,6 +11,7 @@ import os
 
 from openai import AsyncOpenAI
 from openpyxl import Workbook
+from openpyxl.styles import PatternFill
 from google.adk.tools.tool_context import ToolContext
 
 from .pdf_renderer import (
@@ -118,13 +119,20 @@ async def batch_extract_pdfs(
 
     for i, result in enumerate(results):
         pdf_path = pdf_paths[i]
+        # Extract filename from path
+        pdf_filename = os.path.basename(pdf_path)
+
         if isinstance(result, BaseException):
             errors.append(f"{pdf_path}: {str(result)}")
         elif isinstance(result, dict):
             if result.get("status") == "error":
                 errors.append(f"{pdf_path}: {result.get('message', 'Unknown error')}")
             elif result.get("status") == "success":
-                all_rows.extend(result.get("rows", []))
+                rows = result.get("rows", [])
+                # Add source filename to each row
+                for row in rows:
+                    row["_source_file"] = pdf_filename
+                all_rows.extend(rows)
 
     # Write extracted rows to state
     existing_raw = tool_context.state.get("extracted_rows", "[]")
@@ -258,6 +266,14 @@ def _build_schema_prompt(schema_fields: list[dict]) -> str:
         "Extract data from this document according to the following schema.",
         "Return the result as a JSON array where each element is an object with the specified fields.",
         "",
+        "IMPORTANT: Each field should be an object with 'value' and 'confidence':",
+        '  {"value": "actual value", "confidence": "high|medium|low"}',
+        "",
+        "Confidence levels:",
+        "- high: Field is clearly visible and readable",
+        "- medium: Field is readable but slightly unclear",
+        "- low: Field is blurry, partially visible, or uncertain",
+        "",
         "Schema fields:",
     ]
 
@@ -269,6 +285,14 @@ def _build_schema_prompt(schema_fields: list[dict]) -> str:
         lines.append(f"- {name} ({field_type}, {required}): {desc}")
 
     lines.extend([
+        "",
+        "Example output format:",
+        "[",
+        "  {",
+        '    "field1": {"value": "example", "confidence": "high"},',
+        '    "field2": {"value": "123", "confidence": "medium"}',
+        "  }",
+        "]",
         "",
         "Rules:",
         "- Use null for missing optional fields",
@@ -289,7 +313,8 @@ def _parse_extraction_result(content: str, schema_fields: list[dict]) -> list[di
         schema_fields: List of field definitions for validation.
 
     Returns:
-        List of extracted data rows.
+        List of extracted data rows with nested confidence structure.
+        Each row: {"field1": {"value": "...", "confidence": "high"}, ...}
     """
     # Try to extract JSON from response
     content = content.strip()
@@ -328,9 +353,30 @@ def _parse_extraction_result(content: str, schema_fields: list[dict]) -> list[di
 
         for row in parsed:
             if isinstance(row, dict):
-                # Keep only known fields
-                normalized_row = {k: v for k, v in row.items() if k in field_names}
-                normalized.append(normalized_row)
+                normalized_row = {}
+
+                for field_name in field_names:
+                    if field_name not in row:
+                        continue
+
+                    field_value = row[field_name]
+
+                    # Check if field has confidence structure
+                    if isinstance(field_value, dict) and "value" in field_value:
+                        # Already in correct format: {"value": "...", "confidence": "..."}
+                        normalized_row[field_name] = {
+                            "value": field_value.get("value"),
+                            "confidence": field_value.get("confidence", "medium")
+                        }
+                    else:
+                        # Legacy format: direct value, add default confidence
+                        normalized_row[field_name] = {
+                            "value": field_value,
+                            "confidence": "medium"
+                        }
+
+                if normalized_row:
+                    normalized.append(normalized_row)
 
         return normalized
 
@@ -339,7 +385,7 @@ def _parse_extraction_result(content: str, schema_fields: list[dict]) -> list[di
 
 
 def _export_to_excel(rows: list[dict], schema_fields: list[dict], output_path: str) -> str | None:
-    """Export extracted rows to Excel file.
+    """Export extracted rows to Excel file with confidence color coding.
 
     Returns:
         Output path on success, None on failure.
@@ -352,13 +398,50 @@ def _export_to_excel(rows: list[dict], schema_fields: list[dict], output_path: s
         ws = wb.active
         ws.title = "Extracted Data"
 
-        # Write headers
-        headers = [field["name"] for field in schema_fields]
+        # Define confidence color fills
+        confidence_colors = {
+            "high": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"),  # Green
+            "medium": PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid"),  # Yellow
+            "low": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),  # Red
+        }
+
+        # Write headers (source file as first column)
+        headers = ["源文件名称"] + [field["name"] for field in schema_fields]
         ws.append(headers)
 
-        # Write data rows
+        # Write data rows with color coding
         for row_data in rows:
-            ws.append([row_data.get(h, "") for h in headers])
+            row_values = []
+            row_confidences = []
+
+            # First column: source filename (no confidence needed)
+            source_file = row_data.get("_source_file", "")
+            row_values.append(source_file)
+            row_confidences.append("high")  # Source file always high confidence
+
+            # Extract schema fields
+            for field in schema_fields:
+                field_name = field["name"]
+                field_data = row_data.get(field_name, {})
+
+                # Handle nested confidence structure
+                if isinstance(field_data, dict) and "value" in field_data:
+                    row_values.append(field_data.get("value", ""))
+                    row_confidences.append(field_data.get("confidence", "medium"))
+                else:
+                    # Legacy format: direct value
+                    row_values.append(field_data if field_data else "")
+                    row_confidences.append("high")
+
+            # Append row
+            ws.append(row_values)
+
+            # Apply color coding to the last row
+            row_idx = ws.max_row
+            for col_idx, confidence in enumerate(row_confidences, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                if confidence in confidence_colors:
+                    cell.fill = confidence_colors[confidence]
 
         wb.save(output_path)
         return output_path
