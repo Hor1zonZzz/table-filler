@@ -6,10 +6,11 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "aiosqlite>=0.22.1",
+    "python-dotenv>=1.0.0",
     "arize-phoenix>=12.29.0",
     "arize-phoenix-otel>=0.14.0",
     "basedpyright>=1.37.0",
-    "google-adk>=1.21.0",
+    "google-adk>=1.23.0",
     "litellm>=1.80.11",
     "openai>=1.0.0",
     "openinference-instrumentation-google-adk>=0.1.8",
@@ -28,4 +29,13 @@ members = [
 [dependency-groups]
 dev = [
     "ruff>=0.14.10",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

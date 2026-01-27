@@ -1,0 +1,73 @@
+Codemap Update Report
+=====================
+Date: 2026-01-26 14:30:00
+Previous: 2026-01-23 09:45:43
+
+SUMMARY
+-------
+Change Percentage: ~67%
+Status: APPROVED AND UPDATED
+
+CHANGES BY FILE
+---------------
+
+architecture.md:
+  - Added: doc_assistant module (5 modules)
+  - Added: doc_assistant.tools (2 modules)
+  - Added: tests.doc_assistant (7 test files)
+  - Updated: Module descriptions with more detail
+  - Added: System architecture diagram
+  - Added: Entry points section
+
+backend.md:
+  - Added: Doc Assistant Module section
+  - Added: doc_assistant.agent, main, config, services
+  - Added: doc_assistant.tools.document_reader, pdf_utils
+  - Added: Module dependencies diagram
+  - Added: Session persistence options table
+
+data.md:
+  - Added: State management section
+  - Added: Schema field structure documentation
+  - Added: Extracted row structure documentation
+  - Added: Doc Assistant data flow section
+  - Added: Classification result structure
+
+preprocessing.md:
+  - Added: Function categorization (Configuration, State, PDF, Classification)
+  - Added: Classification workflow diagram
+  - Added: Batch processing details
+  - Added: Batch state structure
+  - Added: Integration diagram with VL Agent
+
+MODULE COUNT CHANGES
+--------------------
+Previous Total: 20 modules
+  - vl_agent: 7
+  - vl_agent.tools: 8
+  - preprocess: 3
+  - tests: 1
+  - other: 1
+
+Current Total: 32 modules
+  - vl_agent: 7 (unchanged)
+  - vl_agent.tools: 8 (unchanged)
+  - doc_assistant: 5 (NEW)
+  - doc_assistant.tools: 2 (NEW)
+  - preprocess: 3 (unchanged)
+  - tests.doc_assistant: 7 (NEW)
+
+Net Change: +12 modules (+60%)
+
+FILES UPDATED
+-------------
+[x] codemaps/architecture.md
+[x] codemaps/backend.md
+[x] codemaps/data.md
+[x] codemaps/preprocessing.md
+
+NOTES
+-----
+- Removed obsolete entries: testpreprocess.py, analyze_codemap.py
+- All timestamps updated to 2026-01-26 14:30:00
+- Added [NEW] markers for newly added modules
