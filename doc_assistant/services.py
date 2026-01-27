@@ -5,10 +5,12 @@ This module registers custom services that can be used with adk web:
 
 Usage:
     adk web doc_assistant --memory_service_uri sqlite:///./data/memory.db
+
+Note: Session-to-memory saving is handled by MemoryPlugin.
+      Use --extra_plugins "doc_assistant.plugins.MemoryPlugin" to enable.
 """
 
 import logging
-import os
 from pathlib import Path
 
 from google.adk.cli.service_registry import get_service_registry
@@ -50,32 +52,3 @@ registry = get_service_registry()
 registry.register_memory_service("sqlite", sqlite_memory_factory)
 
 logger.info("Registered SqliteMemoryService for 'sqlite://' URIs")
-
-
-# ============================================================
-# Session Monitor Auto-Start (via environment variables)
-# ============================================================
-
-def _maybe_start_session_monitor():
-    """Start session monitor if configured via environment variables.
-
-    Environment variables:
-        SESSION_MONITOR_ENABLED: Set to "true" to enable (default: false)
-        SESSION_MONITOR_TIMEOUT: Inactivity timeout in seconds (default: 300)
-        SESSION_MONITOR_INTERVAL: Check interval in seconds (default: 60)
-    """
-    enabled = os.getenv("SESSION_MONITOR_ENABLED", "false").lower() == "true"
-    if not enabled:
-        logger.debug("Session monitor is disabled (set SESSION_MONITOR_ENABLED=true to enable)")
-        return
-
-    # Session monitor will be started lazily when first invocation happens
-    # because we don't have access to session_service and memory_service here
-    logger.info(
-        "Session monitor is enabled. It will start on first agent invocation. "
-        f"Timeout: {os.getenv('SESSION_MONITOR_TIMEOUT', '300')}s, "
-        f"Interval: {os.getenv('SESSION_MONITOR_INTERVAL', '60')}s"
-    )
-
-
-_maybe_start_session_monitor()

@@ -1,105 +1,17 @@
-"""Memory-related callbacks for the Document Assistant agent."""
+"""Memory-related callbacks for the Document Assistant agent.
+
+NOTE: Session monitoring is now handled by MemoryPlugin (see plugins/memory_plugin.py).
+This module retains only utility functions for debugging and manual memory operations.
+"""
 
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any
 
 from google.adk.agents.callback_context import CallbackContext
 
 logger = logging.getLogger(__name__)
-
-# Global flag to track if monitor has been initialized.
-_monitor_initialized = False
-
-
-def _is_session_monitor_enabled() -> bool:
-    """Return whether the session monitor is enabled via environment variable."""
-    return os.getenv("SESSION_MONITOR_ENABLED", "false").lower() == "true"
-
-
-def _get_session_monitor_timeout(default: int = 300) -> int:
-    """Return the configured session monitor timeout in seconds."""
-    raw_value = os.getenv("SESSION_MONITOR_TIMEOUT", str(default))
-    try:
-        return int(raw_value)
-    except ValueError:
-        logger.warning(
-            "Invalid SESSION_MONITOR_TIMEOUT=%r, falling back to %s seconds.",
-            raw_value,
-            default,
-        )
-        return default
-
-
-async def _ensure_session_monitor_started(callback_context: CallbackContext) -> None:
-    """Lazily start the session monitor on first invocation.
-
-    This function is intentionally defensive. Any startup failure is logged and
-    treated as a one-time initialization attempt to avoid repeated failures.
-    """
-    global _monitor_initialized
-
-    if _monitor_initialized:
-        return
-
-    if not _is_session_monitor_enabled():
-        _monitor_initialized = True
-        return
-
-    try:
-        from .session_monitor import SessionMonitor, get_monitor, set_monitor
-
-        if get_monitor() is not None:
-            _monitor_initialized = True
-            return
-
-        # NOTE: The ADK exposes services via the invocation context. We avoid
-        # importing these types at module import time to keep import side
-        # effects minimal and to reduce coupling.
-        inv_ctx = callback_context._invocation_context  # noqa: SLF001
-        session_service = inv_ctx.session_service
-        memory_service = inv_ctx.memory_service
-
-        if not session_service or not memory_service:
-            logger.warning("Cannot start SessionMonitor: missing services.")
-            _monitor_initialized = True
-            return
-
-        timeout = _get_session_monitor_timeout()
-        app_name = inv_ctx.agent.name
-
-        monitor = SessionMonitor(
-            session_service=session_service,
-            memory_service=memory_service,
-            app_name=app_name,
-            timeout_seconds=timeout,
-        )
-        set_monitor(monitor)
-        await monitor.start()
-
-        logger.info("SessionMonitor started: app=%s, timeout=%ss.", app_name, timeout)
-        _monitor_initialized = True
-    except Exception:  # noqa: BLE001
-        # We keep behavior consistent with the previous implementation by not
-        # surfacing errors to the caller, but we make failures explicit.
-        logger.exception("Failed to start SessionMonitor.")
-        _monitor_initialized = True
-
-
-def _notify_session_activity(callback_context: CallbackContext) -> None:
-    """Notify the monitor of session activity to reset the inactivity timer."""
-    from .session_monitor import get_monitor
-
-    monitor = get_monitor()
-    if monitor is None:
-        return
-
-    monitor.on_activity(
-        user_id=callback_context.user_id,
-        session_id=callback_context.session.id,
-    )
 
 
 def _extract_user_query(callback_context: CallbackContext) -> str | None:
@@ -113,18 +25,15 @@ def _extract_user_query(callback_context: CallbackContext) -> str | None:
 
 
 async def debug_before_model(callback_context: CallbackContext, llm_request: Any) -> None:
-    """Debug callback that runs before each model call.
+    """Debug callback that logs memory search results before model calls.
+
+    This callback is optional and can be used for debugging memory retrieval.
+    To use it, add `before_model_callback=debug_before_model` to the agent.
 
     Args:
         callback_context: The ADK callback context.
         llm_request: The outbound LLM request (unused, but part of the contract).
     """
-    # Start session monitor if enabled.
-    await _ensure_session_monitor_started(callback_context)
-
-    # Notify activity (resets the inactivity timer).
-    _notify_session_activity(callback_context)
-
     if not logger.isEnabledFor(logging.DEBUG):
         return
 
@@ -171,33 +80,19 @@ async def debug_before_model(callback_context: CallbackContext, llm_request: Any
                 preview,
             )
     except Exception:  # noqa: BLE001
-        # Keep failures visible but do not break the request path.
         logger.exception("[BeforeModel] Error searching memory.")
 
 
-async def after_model_callback(callback_context: CallbackContext, llm_response: Any) -> None:
-    """Callback that runs after each model call to reset the inactivity timer.
-
-    This ensures that model responses also trigger timer resets, preventing
-    the timer from firing during long-running LLM calls.
-    """
-    _notify_session_activity(callback_context)
-
-
 async def save_session_to_memory(callback_context: CallbackContext) -> None:
-    """Manually save the session to memory when the flag is set.
+    """Manually save the current session to memory.
 
-    Set ``state['save_to_memory'] = True`` to trigger this callback.
+    This function can be called to immediately save the session, bypassing
+    the normal inactivity timer. Useful for explicit save triggers.
+
+    Args:
+        callback_context: The ADK callback context.
     """
-    await _ensure_session_monitor_started(callback_context)
-    _notify_session_activity(callback_context)
-
-    should_save = bool(callback_context.state.get("save_to_memory", False))
-    if not should_save:
-        return
-
     session_id = callback_context.session.id
     logger.info("Manual save triggered for session %s.", session_id)
     await callback_context.add_session_to_memory()
-    callback_context.state["save_to_memory"] = False
     logger.info("Session %s saved to memory.", session_id)
