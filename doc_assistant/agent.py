@@ -16,6 +16,7 @@ from google.adk.apps.app import EventsCompactionConfig
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import preload_memory
 
+from .callbacks.compaction_trimmer import create_compaction_trimmer
 from .tools.document_reader import read_document
 
 # Agent instruction (system prompt)
@@ -61,6 +62,7 @@ root_agent = LlmAgent(
     description="通用文档问答助手，可以读取 PDF 和图片并回答问题",
     instruction=INSTRUCTION,
     tools=[read_document, preload_memory],
+    before_model_callback=create_compaction_trimmer(),
 )
 
 # App with event compaction (auto-discovered by adk web)
