@@ -6,6 +6,9 @@
 
 ```bash
 cd project
+# your project path can be
+# /project
+#   /doc_assistant
 adk web --port 8000 \
   --memory_service_uri "sqlite:///./data/memory.db" \
   --session_service_uri "sqlite:///./data/sessions.db"
@@ -17,7 +20,7 @@ adk web --port 8000 \
 
 ```bash
 cd project
-adk web --port 8000 \
+uv run adk web --port 8000 \
   --memory_service_uri "sqlite:///./data/memory.db" \
   --session_service_uri "sqlite:///./data/sessions.db" \
   --extra_plugins "doc_assistant.plugins.MemoryPlugin"

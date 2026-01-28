@@ -11,6 +11,8 @@ logging.getLogger('httpcore').setLevel(logging.WARNING)
 logging.getLogger('LiteLLM').setLevel(logging.INFO)
 
 from google.adk.agents import LlmAgent
+from google.adk.apps import App
+from google.adk.apps.app import EventsCompactionConfig
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import preload_memory
 
@@ -59,4 +61,14 @@ root_agent = LlmAgent(
     description="通用文档问答助手，可以读取 PDF 和图片并回答问题",
     instruction=INSTRUCTION,
     tools=[read_document, preload_memory],
+)
+
+# App with event compaction (auto-discovered by adk web)
+app = App(
+    name="doc_assistant",
+    root_agent=root_agent,
+    events_compaction_config=EventsCompactionConfig(
+        compaction_interval=10,
+        overlap_size=4,
+    ),
 )
