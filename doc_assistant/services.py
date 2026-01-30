@@ -11,6 +11,7 @@ Note: Session-to-memory saving is handled by MemoryPlugin.
 """
 
 import logging
+import os
 from pathlib import Path
 
 from google.adk.cli.service_registry import get_service_registry
@@ -43,8 +44,9 @@ def sqlite_memory_factory(uri: str, **kwargs):
     else:
         db_path = "memory.db"
 
-    logger.info(f"Creating SqliteMemoryService with db_path: {db_path}")
-    return SqliteMemoryService(db_path=db_path)
+    top_k = int(os.environ.get("MEMORY_SEARCH_TOP_K", "20"))
+    logger.info(f"Creating SqliteMemoryService with db_path: {db_path}, top_k: {top_k}")
+    return SqliteMemoryService(db_path=db_path, top_k=top_k)
 
 
 # Register the custom memory service

@@ -2,10 +2,20 @@
 
 ## 启动
 
+### 服务化
+```bash
+uv run phoenix serve
+uv run adk api_server --host 0.0.0.0 --port 8000 \                                   
+  --memory_service_uri "sqlite:///./data/memory.db" \
+  --session_service_uri "sqlite:///./data/sessions.db" \
+  .
+```
+
 ### 基础启动 (无自动保存到 Memory)
 
 ```bash
 cd project
+uv run adk api_server --host 0.0.0.0 --port 8000 .
 # your project path can be
 # /project
 #   /doc_assistant

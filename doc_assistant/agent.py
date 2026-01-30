@@ -10,14 +10,28 @@ logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 logging.getLogger('LiteLLM').setLevel(logging.INFO)
 
+import litellm
+litellm._turn_on_debug()
+
 from google.adk.agents import LlmAgent
 from google.adk.apps import App
-from google.adk.apps.app import EventsCompactionConfig
+from google.adk.apps.app import EventsCompactionConfig, ResumabilityConfig
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import preload_memory
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+from mcp.client.stdio import StdioServerParameters
 
 from .callbacks.compaction_trimmer import create_compaction_trimmer
 from .tools.document_reader import read_document
+
+# Terminal MCP toolset
+terminal_mcp = McpToolset(
+    require_confirmation=True,
+    connection_params=StdioServerParameters(
+        command="uv",
+        args=["run", "terminal-mcp"],
+    ),
+)
 
 # Agent instruction (system prompt)
 INSTRUCTION = """你是一个通用文档处理助手。
@@ -61,7 +75,7 @@ root_agent = LlmAgent(
     name="doc_assistant",
     description="通用文档问答助手，可以读取 PDF 和图片并回答问题",
     instruction=INSTRUCTION,
-    tools=[read_document, preload_memory],
+    tools=[read_document, preload_memory, terminal_mcp],
     before_model_callback=create_compaction_trimmer(),
 )
 
@@ -73,4 +87,5 @@ app = App(
         compaction_interval=10,
         overlap_size=4,
     ),
+    resumability_config=ResumabilityConfig(is_resumable=True),
 )

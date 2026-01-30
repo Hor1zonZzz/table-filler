@@ -41,6 +41,7 @@ class _SqliteConfig:
     db_path: str
     connection_factory: ConnectionFactory
     clock: Clock
+    top_k: int
 
 
 def _default_clock() -> datetime:
@@ -68,6 +69,7 @@ class SqliteMemoryService(BaseMemoryService):
         *,
         connection_factory: ConnectionFactory | None = None,
         clock: Clock = _default_clock,
+        top_k: int = 20,
     ) -> None:
         """Initialize the SQLite memory service.
 
@@ -75,12 +77,15 @@ class SqliteMemoryService(BaseMemoryService):
             db_path: Path to the SQLite database file.
             connection_factory: Optional factory for SQLite connections.
             clock: Injectable clock used for timestamps (test-friendly).
+            top_k: Maximum number of memories returned by search_memory.
+                   Values <= 0 disable the limit.
         """
         factory = connection_factory or _build_connection_factory(db_path)
         self._config = _SqliteConfig(
             db_path=db_path,
             connection_factory=factory,
             clock=clock,
+            top_k=top_k,
         )
         self._lock = threading.Lock()
         self._init_db()
@@ -279,6 +284,8 @@ class SqliteMemoryService(BaseMemoryService):
                         response.memories.append(
                             MemoryEntry(content=memory_content, author=author, timestamp=timestamp)
                         )
+                        if self._config.top_k > 0 and len(response.memories) >= self._config.top_k:
+                            break
             except sqlite3.Error as exc:
                 logger.exception("Failed to search memory: app=%s user=%s.", app_name, user_id)
                 raise RuntimeError("Unable to search memory.") from exc
